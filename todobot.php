@@ -13,7 +13,7 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 	$keyboard = [];
 	$temp = [];
 
-	$query = "SELECT id FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND date_complete='" . $date . "'";
+	$query = "SELECT id FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0";
 	$result = $mysqli->query($query);
 
 	$num_rows = $result->num_rows;
@@ -32,7 +32,7 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 		exit();
 	}
 
-	$counter = 1; // ok
+	$counter = 1;
 	$i = 1;
 	$div = ($num_rows / 5) * 5; // Делим нацело и умножаем. Пример: 18 / 5 = 3. 3 * 5 = 15.
 	$diff = $num_rows - $div; // 18 - 15 = 3
@@ -114,7 +114,7 @@ elseif ($text === "Показать список дел") {
 	$date = date("Y-m-d", time());
 	$answer = "*Список дел:*\n";
 
-	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND date_complete='" . $date . "'"; // yes
+	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0";
 	$result = $mysqli->query($query);
 
 	$i = 1;
@@ -146,7 +146,7 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	$date = date("Y-m-d", time());
 	// $query = "UPDATE todobot_tasks SET complete=1 WHERE id=" . $text . " AND user_id=" . $user_id;
 
-	$query_id = "SELECT id FROM todobot_tasks WHERE user_id= " . $user_id . " AND date_complete='" . $date . "' AND complete=0 ORDER BY id ASC LIMIT 1 OFFSET " . ((int)$text-1);
+	$query_id = "SELECT id FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 ORDER BY id ASC LIMIT 1 OFFSET " . ((int)$text-1);
 	$result = $mysqli->query($query_id);
 	$row = $result->fetch_assoc();
 	$id = $row["id"];
