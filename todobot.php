@@ -89,12 +89,12 @@ elseif ($text === "Завершённые задачи") {
 	$date = date("Y-m-d", time());
 	$answer = "*Завершённые задачи:*\n";
 
-	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=1";
+	$query = "SELECT id, text, date_complete FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=1";
 	$result = $mysqli->query($query);
 
 	$i = 1;
 	while ($row = $result->fetch_assoc()) {
-		$answer .= $i++ . ". " . $row["text"] . "\n";
+		$answer .= $row["text"] . "\n_" . $row["date_complete"] . "_\n\n";
 	}
 	$answer = urlencode($answer);
 
@@ -124,7 +124,7 @@ elseif ($text === "Показать список дел") {
 	$answer = urlencode($answer);
 
 	$keyboard = [
-		["Завершить задачу", "Завершённые задачи"]
+		["Завершить задачу", "Завершённые задачи", "Удалить задачу"]
 	];
 
 	$reply_markup = json_encode([
@@ -151,7 +151,7 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	$row = $result->fetch_assoc();
 	$id = $row["id"];
 
-	$query = "UPDATE todobot_tasks SET complete=1 WHERE id=" . $id . " AND user_id=" . $user_id;
+	$query = "UPDATE todobot_tasks SET complete=1, date_complete='" . $date . "' WHERE id=" . $id . " AND user_id=" . $user_id;
 
 	if ($mysqli->query($query) === TRUE) {
 	    $answer = "Задача <" . $text . "> выполнена.";
