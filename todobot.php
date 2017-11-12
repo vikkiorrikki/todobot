@@ -1,10 +1,6 @@
 <?php
 require_once("todobot_config.php");
 
-/*
-Добавить проверку текущей сессии при вводе номера удаляемой задачи.
-*/
-
 function say($url, $chat_id, $answer) {
 	file_get_contents($url . "/sendmessage?&chat_id=" . $chat_id . "&text=" . $answer . "&parse_mode=Markdown");
 }
@@ -215,7 +211,6 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	$data = $result->fetch_assoc();
 
 	if ($data["current_complete"] == 0 && $data["current_delete"] == 0) {
-		say($url, $chat_id, "OK");
 		addTask($mysqli, $url, $chat_id, $user_id, $text);
 		return;
 	}
