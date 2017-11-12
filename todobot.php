@@ -1,5 +1,9 @@
 <?php
-require_once("todobot_config.php"); 
+require_once("todobot_config.php");
+
+/*
+Добавить проверку текущей сессии при вводе номера удаляемой задачи.
+*/
 
 function say($url, $chat_id, $answer) {
 	file_get_contents($url . "/sendmessage?&chat_id=" . $chat_id . "&text=" . $answer . "&parse_mode=Markdown");
@@ -57,6 +61,30 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 	]);
 
 	keyboard($url, $chat_id, $answer, $reply_markup);	
+}
+
+function addTask($mysqli, $url, $chat_id, $user_id, $text) {
+	$date = date("Y-m-d", time());
+
+	$query = "INSERT INTO todobot_tasks (user_id, date, date_complete, text, complete, deleted) VALUES ('$user_id', '$date', '$date', '$text', 0, 0)";
+
+	if ($mysqli->query($query) === TRUE) {
+	    $answer = "Задача добавлена.";
+	} else {
+	    $answer = "Ошибка: " . $query . "<br>" . $mysqli->error;
+	}
+
+	$keyboard = [
+		["Показать список дел"]
+	];
+
+	$reply_markup = json_encode([
+	    'keyboard' => $keyboard, 
+	    'resize_keyboard' => true,
+	    'one_time_keyboard' => true
+	]);
+
+	keyboard($url, $chat_id, $answer, $reply_markup);
 }
 
 $bot_token = TOKEN;
@@ -124,7 +152,7 @@ elseif ($text === "Показать список дел") {
 	$answer = urlencode($answer);
 
 	$keyboard = [
-		["Завершить задачу", "Завершённые задачи", "Удалить задачу"]
+		["Завершить задачу", "Удалить задачу", "Завершённые задачи"]
 	];
 
 	$reply_markup = json_encode([
@@ -178,18 +206,36 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	
 	$query = "SELECT current_complete, current_delete FROM todobot_sessions WHERE user_id=" . $user_id;
 	$result = $mysqli->query($query);
+
+	if ($result->num_rows == 0) {
+		addTask($mysqli, $url, $chat_id, $user_id, $text);
+		return;
+	}	
+
 	$data = $result->fetch_assoc();
+
+	if ($data["current_complete"] == 0 && $data["current_delete"] == 0) {
+		say($url, $chat_id, "OK");
+		addTask($mysqli, $url, $chat_id, $user_id, $text);
+		return;
+	}
 
 	$query_id = "SELECT id FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0 ORDER BY id ASC LIMIT 1 OFFSET " . ((int)$text-1);
 	$result = $mysqli->query($query_id);
 	$row = $result->fetch_assoc();
 	$id = $row["id"];
 
-	if ($data["current_complete"] == 1)   $query = "UPDATE todobot_tasks SET complete=1, date_complete='" . $date . "' WHERE id=" . $id . " AND deleted=0 AND user_id=" . $user_id;
-	elseif ($data["current_delete"] == 1) $query = "UPDATE todobot_tasks SET deleted=1, date_complete='" . $date . "' WHERE id=" . $id . " AND deleted=0 AND user_id=" . $user_id;
+	if ($data["current_complete"] == 1)   {
+		$query = "UPDATE todobot_tasks SET complete=1, date_complete='" . $date . "' WHERE id=" . $id . " AND deleted=0 AND user_id=" . $user_id;
+		$txt = "выполнена";
+	}
+	else {
+		$query = "UPDATE todobot_tasks SET deleted=1, date_complete='" . $date . "' WHERE id=" . $id . " AND deleted=0 AND user_id=" . $user_id;
+		$txt = "удалена";
+	}
 
 	if ($mysqli->query($query) === TRUE) {
-	    $answer = "Задача <" . $text . "> выполнена.";
+	    $answer = "Задача <" . $text . "> " . $txt . ".";
 	} else {
 	    $answer = "Ошибка: " . $query . "\n" . $mysqli->error;
 	}
@@ -200,27 +246,7 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	tasks($mysqli, $url, $chat_id, $user_id, $date, $answer);
 }
 else {
-	$date = date("Y-m-d", time());
-
-	$query = "INSERT INTO todobot_tasks (user_id, date, date_complete, text, complete, deleted) VALUES ('$user_id', '$date', '$date', '$text', 0, 0)";
-
-	if ($mysqli->query($query) === TRUE) {
-	    $answer = "Задача добавлена.";
-	} else {
-	    $answer = "Ошибка: " . $query . "<br>" . $mysqli->error;
-	}
-
-	$keyboard = [
-		["Показать список дел"]
-	];
-
-	$reply_markup = json_encode([
-	    'keyboard' => $keyboard, 
-	    'resize_keyboard' => true,
-	    'one_time_keyboard' => true
-	]);
-
-	keyboard($url, $chat_id, $answer, $reply_markup);
+	addTask($mysqli, $url, $chat_id, $user_id, $text);
 }
 
 ?>
