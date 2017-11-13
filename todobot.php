@@ -1,6 +1,12 @@
 <?php
 require_once("todobot_config.php");
 
+/*
+– Удаление нескольких задач подряд;
+– Удалить задачу из последнего выведенного списка (Сегодня или Список дел);
+– Вывод списка дел по датам (Сегодня, Завтра, Потом).
+*/
+
 function say($url, $chat_id, $answer) {
 	file_get_contents($url . "/sendmessage?&chat_id=" . $chat_id . "&text=" . $answer . "&parse_mode=Markdown");
 }
@@ -37,7 +43,6 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 	$div = ($num_rows / 5) * 5; // Делим нацело и умножаем. Пример: 18 / 5 = 3. 3 * 5 = 15.
 	$diff = $num_rows - $div; // 18 - 15 = 3
 	while ($row = $result->fetch_assoc()) {
-		// $temp[] = $row["id"];
 		$temp[] = (string)$i++;
 
 		if ($counter % 5 == 0) {
@@ -48,7 +53,7 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 
 		++$counter;
 	}
-	$keyboard[] = ["Показать список дел"];
+	$keyboard[] = ["Сегодня", "Показать список дел"];
 
 	$reply_markup = json_encode([
 	    'keyboard' => $keyboard, 
@@ -71,7 +76,7 @@ function addTask($mysqli, $url, $chat_id, $user_id, $text) {
 	}
 
 	$keyboard = [
-		["Показать список дел"]
+		["Сегодня", "Показать список дел"]
 	];
 
 	$reply_markup = json_encode([
@@ -123,7 +128,7 @@ elseif ($text === "Завершённые задачи") {
 	$answer = urlencode($answer);
 
 	$keyboard = [
-		["Показать список дел"]
+		["Сегодня", "Показать список дел"]
 	];
 
 	$reply_markup = json_encode([
@@ -135,7 +140,6 @@ elseif ($text === "Завершённые задачи") {
 	keyboard($url, $chat_id, $answer, $reply_markup);
 }
 elseif ($text === "Показать список дел") {
-	$date = date("Y-m-d", time());
 	$answer = "*Список дел:*\n";
 
 	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0";
@@ -148,7 +152,32 @@ elseif ($text === "Показать список дел") {
 	$answer = urlencode($answer);
 
 	$keyboard = [
-		["Завершить задачу", "Удалить задачу", "Завершённые задачи"]
+		["Завершить задачу", "Удалить задачу", "Завершённые задачи", "Сегодня"]
+	];
+
+	$reply_markup = json_encode([
+	    'keyboard' => $keyboard, 
+	    'resize_keyboard' => true,
+	    'one_time_keyboard' => true
+	]);
+
+	keyboard($url, $chat_id, $answer, $reply_markup);
+}
+elseif ($text === "Сегодня") {
+	$date = date("Y-m-d", time());
+	$answer = "*На сегодня:*\n";
+
+	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0 AND date_complete='" . $date . "'";
+	$result = $mysqli->query($query);
+
+	$i = 1;
+	while ($row = $result->fetch_assoc()) {
+		$answer .= $i++ . ". " . $row["text"] . "\n";
+	}
+	$answer = urlencode($answer);
+
+	$keyboard = [
+		["Завершить задачу", "Удалить задачу", "Завершённые задачи", "Показать список дел"]
 	];
 
 	$reply_markup = json_encode([
