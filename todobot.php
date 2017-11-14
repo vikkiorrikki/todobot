@@ -259,7 +259,7 @@ elseif (preg_match('~^[\d]+$~', $text)) {
 		return;
 	}	
 
-	$data = $result->fetch_assoc();
+	$data = $result->fetch_assoc(); // git test
 
 	if ($data["current_complete"] == 0 && $data["current_delete"] == 0) {
 		addTask($mysqli, $url, $chat_id, $user_id, $text);
