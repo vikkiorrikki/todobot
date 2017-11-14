@@ -38,6 +38,8 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 		exit();
 	}
 
+	$keyboard[] = ["Закончить"];
+
 	$counter = 1;
 	$i = 1;
 	$div = ($num_rows / 5) * 5; // Делим нацело и умножаем. Пример: 18 / 5 = 3. 3 * 5 = 15.
@@ -111,10 +113,7 @@ $mysqli->set_charset("utf8");
 
 $keyboard = [];
 
-if ($text === "/start") {
-
-}
-elseif ($text === "Завершённые задачи") {
+if ($text === "Завершённые задачи") {
 	$date = date("Y-m-d", time());
 	$answer = "*Завершённые задачи:*\n";
 
@@ -224,7 +223,23 @@ elseif ($text === "Завершить задачу" || $text === "Удалить
 	}
 	tasks($mysqli, $url, $chat_id, $user_id, $date, $answer);
 }
-elseif(preg_match('~^[\d]+$~', $text)) {
+elseif ($text === "Закончить") {
+	$query = "UPDATE todobot_sessions SET current_complete=0, current_delete=0 WHERE user_id=" . $user_id;
+	$mysqli->query($query);
+
+	$keyboard = [["Сегодня", "Показать список дел"]];
+
+	$reply_markup = json_encode([
+	    'keyboard' => $keyboard, 
+	    'resize_keyboard' => true,
+	    'one_time_keyboard' => true
+	]);
+
+	$answer = "Завершено.";
+
+	keyboard($url, $chat_id, $answer, $reply_markup);
+}
+elseif (preg_match('~^[\d]+$~', $text)) {
 	$keyboard = [];
 	$temp = [];
 	$date = date("Y-m-d", time());
@@ -264,8 +279,8 @@ elseif(preg_match('~^[\d]+$~', $text)) {
 	    $answer = "Ошибка: " . $query . "\n" . $mysqli->error;
 	}
 
-	$query = "UPDATE todobot_sessions SET current_complete=0, current_delete=0 WHERE user_id=" . $user_id;
-	$mysqli->query($query);
+	// $query = "UPDATE todobot_sessions SET current_complete=0, current_delete=0 WHERE user_id=" . $user_id;
+	// $mysqli->query($query);
 
 	tasks($mysqli, $url, $chat_id, $user_id, $date, $answer);
 }
