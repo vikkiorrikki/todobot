@@ -2,7 +2,6 @@
 require_once("todobot_config.php");
 
 /*
-– Удаление нескольких задач подряд;
 – Удалить задачу из последнего выведенного списка (Сегодня или Список дел);
 – Вывод списка дел по датам (Сегодня, Завтра, Потом).
 */
@@ -66,6 +65,33 @@ function tasks($mysqli, $url, $chat_id, $user_id, $date, $answer) {
 	keyboard($url, $chat_id, $answer, $reply_markup);	
 }
 
+function selectTasks($mysqli, $url, $chat_id, $user_id, $mode) {
+	$date = date("Y-m-d", time());
+	$completed = 0; // for date printing
+	$answer = "";
+
+	if ($mode === "all") {
+		$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0";
+	}
+	elseif ($mode === "today") {
+		$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0 AND date_complete='" . $date . "'";
+	}
+	elseif ($mode === "completed") {
+		$query = "SELECT text, date_complete FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=1 AND deleted=0";
+		$completed = 1;
+	}
+
+	$result = $mysqli->query($query);
+
+	$i = 1;
+	while ($row = $result->fetch_assoc()) { // Can be optimized!
+		if ($completed == 0) $answer .= $i++ . ". " . $row["text"] . "\n";
+		else $answer .= $row["text"] . "\n_" . $row["date_complete"] . "_\n\n";
+	}
+
+	return $answer;
+}
+
 function addTask($mysqli, $url, $chat_id, $user_id, $text) {
 	$date = date("Y-m-d", time());
 
@@ -112,19 +138,12 @@ if ($mysqli->connect_errno) {
 $mysqli->set_charset("utf8");
 
 $keyboard = [];
+$answer = "";
 
 if ($text === "Завершённые задачи") {
-	$date = date("Y-m-d", time());
 	$answer = "*Завершённые задачи:*\n";
 
-	$query = "SELECT id, text, date_complete FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=1 AND deleted=0";
-	$result = $mysqli->query($query);
-
-	$i = 1;
-	while ($row = $result->fetch_assoc()) {
-		$answer .= $row["text"] . "\n_" . $row["date_complete"] . "_\n\n";
-	}
-	$answer = urlencode($answer);
+	$answer .= selectTasks($mysqli, $url, $chat_id, $user_id, "completed");
 
 	$keyboard = [
 		["Сегодня", "Показать список дел"]
@@ -136,19 +155,13 @@ if ($text === "Завершённые задачи") {
 	    'one_time_keyboard' => true
 	]);
 
+	$answer = urlencode($answer);
 	keyboard($url, $chat_id, $answer, $reply_markup);
 }
 elseif ($text === "Показать список дел") {
 	$answer = "*Список дел:*\n";
 
-	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0";
-	$result = $mysqli->query($query);
-
-	$i = 1;
-	while ($row = $result->fetch_assoc()) {
-		$answer .= $i++ . ". " . $row["text"] . "\n";
-	}
-	$answer = urlencode($answer);
+	$answer .= selectTasks($mysqli, $url, $chat_id, $user_id, "all");
 
 	$keyboard = [
 		["Завершить задачу", "Удалить задачу", "Завершённые задачи", "Сегодня"]
@@ -160,20 +173,13 @@ elseif ($text === "Показать список дел") {
 	    'one_time_keyboard' => true
 	]);
 
+	$answer = urlencode($answer);
 	keyboard($url, $chat_id, $answer, $reply_markup);
 }
 elseif ($text === "Сегодня") {
-	$date = date("Y-m-d", time());
 	$answer = "*На сегодня:*\n";
 
-	$query = "SELECT id, text FROM todobot_tasks WHERE user_id= " . $user_id . " AND complete=0 AND deleted=0 AND date_complete='" . $date . "'";
-	$result = $mysqli->query($query);
-
-	$i = 1;
-	while ($row = $result->fetch_assoc()) {
-		$answer .= $i++ . ". " . $row["text"] . "\n";
-	}
-	$answer = urlencode($answer);
+	$answer .= selectTasks($mysqli, $url, $chat_id, $user_id, "today");
 
 	$keyboard = [
 		["Завершить задачу", "Удалить задачу", "Завершённые задачи", "Показать список дел"]
@@ -185,6 +191,7 @@ elseif ($text === "Сегодня") {
 	    'one_time_keyboard' => true
 	]);
 
+	$answer = urlencode($answer);
 	keyboard($url, $chat_id, $answer, $reply_markup);
 }
 elseif ($text === "Завершить задачу" || $text === "Удалить задачу") {
@@ -279,9 +286,10 @@ elseif (preg_match('~^[\d]+$~', $text)) {
 	    $answer = "Ошибка: " . $query . "\n" . $mysqli->error;
 	}
 
-	// $query = "UPDATE todobot_sessions SET current_complete=0, current_delete=0 WHERE user_id=" . $user_id;
-	// $mysqli->query($query);
+	$answer = "*Список дел:*\n";
+	$answer .= selectTasks($mysqli, $url, $chat_id, $user_id, "all");
 
+	$answer = urlencode($answer);
 	tasks($mysqli, $url, $chat_id, $user_id, $date, $answer);
 }
 else {
