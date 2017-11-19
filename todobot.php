@@ -8,6 +8,7 @@ require_once("todobot_config.php");
 – Поддержка двух языков
 – Профильтровать все данные
 – Укороить текст
+– Картинка как задача
 */
 
 function say($url, $chat_id, $answer) {
